@@ -421,14 +421,22 @@ const KLAVIYO = {
       );
 
       // Klaviyo answers 202 with an empty body on success.
-      if (!res.ok) throw new Error('Klaviyo returned ' + res.status + ' ' + (await res.text()));
+      if (!res.ok) {
+        const body = await res.text();
+        let detail = '';
+        try { detail = JSON.parse(body).errors[0].detail; } catch (_) {}
+        const err = new Error('Klaviyo returned ' + res.status + ' ' + body);
+        err.detail = res.status + (detail ? ': ' + detail : '');
+        throw err;
+      }
 
       doneMsg.textContent = 'We’ll email ' + email + ' as soon as it opens.';
       document.body.classList.add('is-done');
       done.focus();
     } catch (err) {
       console.error('[waitlist]', err);
-      say('Something went wrong. Please try again.', 'error');
+      // Show the reason so a screenshot is enough to diagnose it.
+      say('Something went wrong (' + (err.detail || err.message) + '). Please try again.', 'error');
       button.disabled = false;
       button.innerHTML = label;
     }
